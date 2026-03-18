@@ -12,6 +12,10 @@ Raspberry Pi 4B 上で、MariaDB や Grafana の永続データ保存による S
 ## 基本方針
 このリポジトリの `docker-compose.yml` は balena の named volume を使います。USB ストレージ利用は、アプリコンテナ内の小細工ではなく Host 側の運用として扱います。
 
+重要:
+- `usb-storage` 補助サービスは mount 確認には使えますが、SD 消耗対策を単独で完了させるものではありません。
+- SD 消耗を本当に抑えるには、Docker 永続データの保存先を USB 前提で設計する必要があります。
+
 ## 実機での確認
 Host OS またはホスト OS コンテナから、まず接続状態を確認します。
 

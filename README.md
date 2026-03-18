@@ -21,7 +21,7 @@
 - `10051`: Zabbix Server
 
 `docker-compose.yml` には `cloudflared` も含めています。`CF_TUNNEL_TOKEN` を設定すると、Grafana や Zabbix Web を Cloudflare Tunnel 経由で公開できます。
-また、`usb-storage` サービスは `LABEL=PI4DATA` の USB を検出してコンテナ内 `/mnt/usb` に自動 mount します。
+また、`usb-storage` サービスは `LABEL=PI4DATA` の USB を検出してコンテナ内 `/mnt/usb` に自動 mountしますが、これは補助用途です。SD 消耗対策の本命は Docker 永続データ全体を USB 側で運用することです。
 
 ## Balena Cloud への手動デプロイ
 前提:
@@ -87,7 +87,9 @@ GitHub Secrets:
 - そのため、アプリ側 Compose だけで完結させず、balenaOS 側の永続データ運用として USB を使う方針にしています。
 - USB ストレージは `ext4`、常設接続、UUID または LABEL 管理を推奨します。
 - このリポジトリには `usb-storage` 補助サービスを追加してあり、`PI4DATA` ラベルの USB を自動 mount できます。
-- ただし、この補助サービスだけでは `mariadb-data` や `grafana-data` の live volume の実体は自動では USB に移りません。live volume の完全移行は Host 側設計が別途必要です。
+- ただし、この補助サービスだけでは `mariadb-data` や `grafana-data` の live volume の実体は USB に移りません。
+- SD カード消耗を本当に減らしたい場合、本命は `/var/lib/docker` を含む Docker 永続データ領域を USB 側で運用することです。
+- つまり、`usb-storage` は確認・補助・バックアップ用途であり、SD 消耗対策そのものを単独で解決するものではありません。
 
 確認コマンド例:
 - `lsblk -f`
@@ -98,6 +100,11 @@ GitHub Secrets:
 - `LABEL=PI4DATA` の USB を検出する
 - コンテナ内 `/mnt/usb` に自動 mount する
 - 将来のバックアップ保存先や移行作業用の補助領域として使う
+
+本当にやるべきこと:
+- MariaDB や Grafana の live data を SD に書かせない
+- そのために Host 側の Docker 永続データ設計を USB 前提にする
+- この部分はアプリ Compose ではなく balenaOS 実機運用として扱う
 
 ## Cloudflare Tunnel
 Cloudflare の公式手順では、リモート管理トンネルは token だけで実行できます。Docker 実行例も `cloudflare/cloudflared:latest tunnel --no-autoupdate run --token <TUNNEL_TOKEN>` です。このリポジトリでは同じ方式を `cloudflared` サービスに組み込んでいます。
