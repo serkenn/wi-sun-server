@@ -24,6 +24,7 @@
 
 `docker-compose.yml` には `cloudflared` も含めています。`CF_TUNNEL_TOKEN` を設定すると、Grafana や Zabbix Web を Cloudflare Tunnel 経由で公開できます。
 また、`usb-storage` サービスは `LABEL=PI4DATA` の USB を検出してコンテナ内 `/mnt/usb` に自動 mountしますが、これは補助用途です。SD 消耗対策の本命は Docker 永続データ全体を USB 側で運用することです。`backup-rotate` は MariaDB の gzip バックアップを USB に定期保存し、古いものから削除して最新を残します。
+Grafana には `alexanderzobnin-zabbix-app` を起動時に自動導入し、Zabbix データソースを追加できる状態にしています。
 
 ## Balena Cloud への手動デプロイ
 前提:
@@ -69,6 +70,21 @@ GitHub Secrets:
 - 実機確認の流れは [`docs/balena-usb-setup.md`](/Users/serken/Desktop/4b/docs/balena-usb-setup.md) にまとめています。
 - SD 消耗対策の考え方は [`docs/docker-data-on-usb.md`](/Users/serken/Desktop/4b/docs/docker-data-on-usb.md) にまとめています。
 - 構成変更時は `AGENTS.md` とこの `README.md` を必ず更新してください。
+
+## Grafana から Zabbix を使う
+この構成では Grafana に Zabbix プラグインを自動導入します。Grafana 11.1.0 は、Grafana Labs の公開情報で Zabbix plugin 5.x の必要条件である Grafana 10.4.8 以上を満たしています。
+
+設定手順:
+1. Grafana に `admin` でログインします。
+2. `Connections` から `Data sources` を開き、`Zabbix` を追加します。
+3. `URL` は `http://zabbix-web:8080/api_jsonrpc.php` を指定します。
+4. Zabbix 側の読み取り用ユーザー名とパスワードを設定します。
+5. `Save & Test` を実行して疎通を確認します。
+
+補足:
+- Grafana-Zabbix plugin は Zabbix API 経由で取得できます。
+- history / trend の高速化が必要なら、MySQL データソースを別途追加して Direct DB Connection を併用できます。
+- Direct DB を使う場合でも、Grafana からは読み取り専用権限だけを付与してください。
 
 ## Raspberry Pi 3 側との接続
 `/Users/serken/Desktop/3` の Pi 3 リポジトリを確認したところ、Pi 3 側は `zabbix_agentd` でスマートメーター値を公開する構成です。Pi 4 側とは次の前提で接続します。
