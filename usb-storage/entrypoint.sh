@@ -20,6 +20,13 @@ find_device() {
     return 0
   fi
 
+  if device="$(blkid -L "${USB_LABEL}" 2>/dev/null)"; then
+    if [ -n "${device}" ] && [ -b "${device}" ]; then
+      echo "${device}"
+      return 0
+    fi
+  fi
+
   return 1
 }
 
