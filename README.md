@@ -33,7 +33,7 @@
 
 手順:
 1. `cp .env.template .env` で雛形を作成し、パスワード類を変更します。
-2. balenaCloud の fleet または device の環境変数にも、少なくとも `DB_PASSWORD`、`DB_ROOT_PASSWORD`、`GRAFANA_ADMIN_PASSWORD` を登録します。Cloudflare Tunnel を使う場合は `CF_TUNNEL_TOKEN` も登録します。
+2. balenaCloud の fleet または device の環境変数にも、少なくとも `MARIADB_PASSWORD`、`MARIADB_ROOT_PASSWORD`、`MYSQL_PASSWORD`、`MYSQL_ROOT_PASSWORD`、`GF_SECURITY_ADMIN_PASSWORD` を登録します。Cloudflare Tunnel を使う場合は `CF_TUNNEL_TOKEN` も登録します。
    USB 補助サービスを使う場合は `USB_LABEL=PI4DATA` を確認します。
    バックアップ運用を使う場合は `BACKUP_INTERVAL_SEC`、`BACKUP_RETENTION_COUNT`、`BACKUP_MAX_USAGE_PERCENT` も必要に応じて調整します。
 3. `balena login` または `balena login --token <API_TOKEN>` でログインします。
@@ -132,6 +132,28 @@ Zabbix housekeeping の推奨例:
 - trends: 365日
 
 この設定は Zabbix Web の `Administration > Housekeeping` から調整してください。live DB を無理にスクリプトで削るより安全です。
+
+## balena 変数名
+balenaCloud では Docker Compose の `${VAR:-default}` 展開に依存しない構成にしています。設定すべき変数名は次のとおりです。
+
+- `MARIADB_PASSWORD`
+- `MARIADB_ROOT_PASSWORD`
+- `MYSQL_PASSWORD`
+- `MYSQL_ROOT_PASSWORD`
+- `GF_SECURITY_ADMIN_PASSWORD`
+- `CF_TUNNEL_TOKEN`
+- `USB_LABEL`
+- `BACKUP_INTERVAL_SEC`
+- `BACKUP_RETENTION_COUNT`
+- `BACKUP_MAX_USAGE_PERCENT`
+
+推奨値:
+- `USB_LABEL=PI4DATA`
+- `BACKUP_INTERVAL_SEC=21600`
+- `BACKUP_RETENTION_COUNT=14`
+- `BACKUP_MAX_USAGE_PERCENT=85`
+
+`MARIADB_PASSWORD` と `MYSQL_PASSWORD` は同じ値、`MARIADB_ROOT_PASSWORD` と `MYSQL_ROOT_PASSWORD` も同じ値にしてください。
 
 ## Cloudflare Tunnel
 Cloudflare の公式手順では、リモート管理トンネルは token だけで実行できます。Docker 実行例も `cloudflare/cloudflared:latest tunnel --no-autoupdate run --token <TUNNEL_TOKEN>` です。このリポジトリでは同じ方式を `cloudflared` サービスに組み込んでいます。

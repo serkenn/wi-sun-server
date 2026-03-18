@@ -9,9 +9,9 @@ BACKUP_INTERVAL_SEC="${BACKUP_INTERVAL_SEC:-21600}"
 BACKUP_RETENTION_COUNT="${BACKUP_RETENTION_COUNT:-14}"
 BACKUP_MAX_USAGE_PERCENT="${BACKUP_MAX_USAGE_PERCENT:-85}"
 DB_HOST="${DB_HOST:-mariadb}"
-DB_NAME="${DB_NAME:-zabbix}"
-DB_USER="${DB_USER:-zabbix}"
-DB_PASSWORD="${DB_PASSWORD:-}"
+DB_NAME="${DB_NAME:-${MYSQL_DATABASE:-zabbix}}"
+DB_USER="${DB_USER:-${MYSQL_USER:-zabbix}}"
+DB_PASSWORD="${DB_PASSWORD:-${MYSQL_PASSWORD:-${MARIADB_PASSWORD:-}}}"
 
 mkdir -p "${MOUNT_POINT}" "${BACKUP_DIR}"
 
@@ -100,7 +100,7 @@ prune_by_usage() {
 }
 
 if [[ -z "${DB_PASSWORD}" ]]; then
-  echo "DB_PASSWORD is required" >&2
+  echo "DB_PASSWORD or MYSQL_PASSWORD is required" >&2
   exit 1
 fi
 
