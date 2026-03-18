@@ -36,9 +36,19 @@ ensure_mount() {
   fi
 
   local device
-  device="$(find_device)"
+  if ! device="$(find_device)"; then
+    echo "USB storage with label ${USB_LABEL} not found. Waiting for device."
+    return 1
+  fi
+
   echo "Mounting ${device} on ${MOUNT_POINT}"
-  mount "${device}" "${MOUNT_POINT}"
+  if mount "${device}" "${MOUNT_POINT}"; then
+    echo "USB storage ready: ${device} -> ${MOUNT_POINT}"
+    return 0
+  fi
+
+  echo "Failed to mount ${device} on ${MOUNT_POINT}. Waiting before retry."
+  return 1
 }
 
 wait_for_db() {
@@ -105,7 +115,10 @@ if [[ -z "${DB_PASSWORD}" ]]; then
 fi
 
 while true; do
-  ensure_mount
+  if ! ensure_mount; then
+    sleep 30
+    continue
+  fi
   mkdir -p "${BACKUP_DIR}"
   wait_for_db
   create_backup
