@@ -111,9 +111,10 @@ services:
     depends_on:
       - zabbix-web
       - grafana
-    command:
-      - sh
+    entrypoint:
+      - /bin/sh
       - -ec
+    command:
       - |
         if [ -z "$CF_TUNNEL_TOKEN" ]; then
           echo "CF_TUNNEL_TOKEN is not set. cloudflared stays idle."
