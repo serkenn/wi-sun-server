@@ -12,6 +12,7 @@
 - `docs/system.md`: システム全体構成図
 - `docs/usb-storage.md`: USB ストレージ運用メモ
 - `docs/balena-usb-setup.md`: balenaOS 実機での USB ストレージ確認手順
+- `usb-storage/`: USB 自動 mount 用の補助サービス
 - `AGENTS.md`: 開発者・エージェント向け運用ガイド
 
 公開ポートの初期値は以下です。
@@ -20,6 +21,7 @@
 - `10051`: Zabbix Server
 
 `docker-compose.yml` には `cloudflared` も含めています。`CF_TUNNEL_TOKEN` を設定すると、Grafana や Zabbix Web を Cloudflare Tunnel 経由で公開できます。
+また、`usb-storage` サービスは `LABEL=PI4DATA` の USB を検出してコンテナ内 `/mnt/usb` に自動 mount します。
 
 ## Balena Cloud への手動デプロイ
 前提:
@@ -30,6 +32,7 @@
 手順:
 1. `cp .env.template .env` で雛形を作成し、パスワード類を変更します。
 2. balenaCloud の fleet または device の環境変数にも、少なくとも `DB_PASSWORD`、`DB_ROOT_PASSWORD`、`GRAFANA_ADMIN_PASSWORD` を登録します。Cloudflare Tunnel を使う場合は `CF_TUNNEL_TOKEN` も登録します。
+   USB 補助サービスを使う場合は `USB_LABEL=PI4DATA` を確認します。
 3. `balena login` または `balena login --token <API_TOKEN>` でログインします。
 4. `balena push Pi-Smarthome --source .` を実行してデプロイします。
 
@@ -83,11 +86,18 @@ GitHub Secrets:
 - balena のマルチコンテナでは `docker-compose.yml` の bind mount に制約があり、任意のホスト USB パスを単純に指定する設計は避けるべきです。
 - そのため、アプリ側 Compose だけで完結させず、balenaOS 側の永続データ運用として USB を使う方針にしています。
 - USB ストレージは `ext4`、常設接続、UUID または LABEL 管理を推奨します。
+- このリポジトリには `usb-storage` 補助サービスを追加してあり、`PI4DATA` ラベルの USB を自動 mount できます。
+- ただし、この補助サービスだけでは `mariadb-data` や `grafana-data` の live volume の実体は自動では USB に移りません。live volume の完全移行は Host 側設計が別途必要です。
 
 確認コマンド例:
 - `lsblk -f`
 
 この部分は Host 側運用を伴うため、実機でのストレージ認識と再起動後の継続性を必ず確認してください。
+
+`usb-storage` サービスの役割:
+- `LABEL=PI4DATA` の USB を検出する
+- コンテナ内 `/mnt/usb` に自動 mount する
+- 将来のバックアップ保存先や移行作業用の補助領域として使う
 
 ## Cloudflare Tunnel
 Cloudflare の公式手順では、リモート管理トンネルは token だけで実行できます。Docker 実行例も `cloudflare/cloudflared:latest tunnel --no-autoupdate run --token <TUNNEL_TOKEN>` です。このリポジトリでは同じ方式を `cloudflared` サービスに組み込んでいます。

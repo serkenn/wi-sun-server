@@ -9,6 +9,19 @@ volumes:
   grafana-data:
 
 services:
+  usb-storage:
+    build: ./usb-storage
+    restart: unless-stopped
+    privileged: true
+    network_mode: host
+    labels:
+      io.balena.features.dbus: "1"
+      io.balena.features.kernel-modules: "1"
+    environment:
+      USB_LABEL: "${USB_LABEL:-PI4DATA}"
+      USB_MOUNT_POINT: /mnt/usb
+      USB_CHECK_INTERVAL: "${USB_CHECK_INTERVAL:-30}"
+
   mariadb:
     image: mariadb:11.4
     restart: unless-stopped

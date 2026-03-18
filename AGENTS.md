@@ -15,7 +15,7 @@
 - `.github/workflows/`: GitHub Actions による自動デプロイ設定を配置
 - `docs/`: 構成図や補助資料を配置
 
-現時点の主対象サービスは `mariadb`、`zabbix-server`、`zabbix-web`、`grafana`、`cloudflared` です。fleet 名は `Pi-Smarthome`、device type は `Raspberry Pi 4 (using 64bit OS)` を前提とします。構成を変更した場合は、この文書と `README.md` の両方を更新してください。
+現時点の主対象サービスは `usb-storage`、`mariadb`、`zabbix-server`、`zabbix-web`、`grafana`、`cloudflared` です。fleet 名は `Pi-Smarthome`、device type は `Raspberry Pi 4 (using 64bit OS)` を前提とします。構成を変更した場合は、この文書と `README.md` の両方を更新してください。
 
 ## ドキュメント運用
 - 新しいファイルは目的が分かる名前にします。例: `docs/setup-guide.md`
