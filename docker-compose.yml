@@ -1,0 +1,107 @@
+version: "2.1"
+
+volumes:
+  mariadb-data:
+  zabbix-alertscripts:
+  zabbix-externalscripts:
+  zabbix-modules:
+  zabbix-enc:
+  grafana-data:
+
+services:
+  mariadb:
+    image: mariadb:11.4
+    restart: unless-stopped
+    environment:
+      TZ: "${TZ:-Asia/Tokyo}"
+      MARIADB_ROOT_PASSWORD: "${DB_ROOT_PASSWORD}"
+      MARIADB_DATABASE: "${DB_NAME:-zabbix}"
+      MARIADB_USER: "${DB_USER:-zabbix}"
+      MARIADB_PASSWORD: "${DB_PASSWORD}"
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --transaction-isolation=READ-COMMITTED
+      - --binlog-format=ROW
+      - --log-bin-trust-function-creators=1
+    volumes:
+      - mariadb-data:/var/lib/mysql
+
+  zabbix-server:
+    image: zabbix/zabbix-server-mysql:alpine-7.0-latest
+    restart: unless-stopped
+    depends_on:
+      - mariadb
+    environment:
+      TZ: "${TZ:-Asia/Tokyo}"
+      DB_SERVER_HOST: mariadb
+      MYSQL_DATABASE: "${DB_NAME:-zabbix}"
+      MYSQL_USER: "${DB_USER:-zabbix}"
+      MYSQL_PASSWORD: "${DB_PASSWORD}"
+      MYSQL_ROOT_PASSWORD: "${DB_ROOT_PASSWORD}"
+      ZBX_STARTPOLLERS: "${ZBX_STARTPOLLERS:-10}"
+      ZBX_STARTPINGERS: "${ZBX_STARTPINGERS:-4}"
+      ZBX_CACHE_SIZE: "${ZBX_CACHE_SIZE:-128M}"
+      ZBX_HISTORYCACHESIZE: "${ZBX_HISTORYCACHESIZE:-32M}"
+      ZBX_TRENDCACHESIZE: "${ZBX_TRENDCACHESIZE:-32M}"
+      ZBX_VALUECACHESIZE: "${ZBX_VALUECACHESIZE:-64M}"
+    ports:
+      - "10051:10051"
+    volumes:
+      - zabbix-alertscripts:/usr/lib/zabbix/alertscripts
+      - zabbix-externalscripts:/usr/lib/zabbix/externalscripts
+      - zabbix-modules:/var/lib/zabbix/modules
+      - zabbix-enc:/var/lib/zabbix/enc
+
+  zabbix-web:
+    image: zabbix/zabbix-web-nginx-mysql:alpine-7.0-latest
+    restart: unless-stopped
+    depends_on:
+      - mariadb
+      - zabbix-server
+    environment:
+      TZ: "${TZ:-Asia/Tokyo}"
+      DB_SERVER_HOST: mariadb
+      MYSQL_DATABASE: "${DB_NAME:-zabbix}"
+      MYSQL_USER: "${DB_USER:-zabbix}"
+      MYSQL_PASSWORD: "${DB_PASSWORD}"
+      MYSQL_ROOT_PASSWORD: "${DB_ROOT_PASSWORD}"
+      ZBX_SERVER_HOST: zabbix-server
+      PHP_TZ: "${TZ:-Asia/Tokyo}"
+    ports:
+      - "8080:8080"
+
+  grafana:
+    image: grafana/grafana-oss:11.1.0
+    restart: unless-stopped
+    depends_on:
+      - mariadb
+    environment:
+      TZ: "${TZ:-Asia/Tokyo}"
+      GF_SERVER_HTTP_PORT: "3000"
+      GF_SECURITY_ADMIN_USER: "${GRAFANA_ADMIN_USER:-admin}"
+      GF_SECURITY_ADMIN_PASSWORD: "${GRAFANA_ADMIN_PASSWORD}"
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_INSTALL_PLUGINS: "${GRAFANA_PLUGINS:-}"
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana-data:/var/lib/grafana
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    depends_on:
+      - zabbix-web
+      - grafana
+    environment:
+      TUNNEL_TOKEN: "${CF_TUNNEL_TOKEN:-}"
+    command:
+      - sh
+      - -ec
+      - |
+        if [ -z "$TUNNEL_TOKEN" ]; then
+          echo "CF_TUNNEL_TOKEN is not set. cloudflared stays idle."
+          exec sleep infinity
+        fi
+        exec cloudflared tunnel --no-autoupdate run --token "$TUNNEL_TOKEN"

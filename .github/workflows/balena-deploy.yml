@@ -1,0 +1,28 @@
+name: balena-deploy
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install balena CLI
+        run: npm install --global balena-cli
+
+      - name: Login to balenaCloud
+        env:
+          BALENA_API_TOKEN: ${{ secrets.BALENA_API_TOKEN }}
+        run: balena login --token "$BALENA_API_TOKEN"
+
+      - name: Deploy to balenaCloud fleet
+        env:
+          BALENA_FLEET: ${{ secrets.BALENA_FLEET }}
+        run: balena push "$BALENA_FLEET" --source .
