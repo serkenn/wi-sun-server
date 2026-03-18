@@ -12,7 +12,9 @@
 - `docs/system.md`: システム全体構成図
 - `docs/usb-storage.md`: USB ストレージ運用メモ
 - `docs/balena-usb-setup.md`: balenaOS 実機での USB ストレージ確認手順
+- `docs/docker-data-on-usb.md`: SD 消耗対策として本当に必要な考え方
 - `usb-storage/`: USB 自動 mount 用の補助サービス
+- `backup-rotate/`: USB 向け MariaDB バックアップ世代管理サービス
 - `AGENTS.md`: 開発者・エージェント向け運用ガイド
 
 公開ポートの初期値は以下です。
@@ -21,7 +23,7 @@
 - `10051`: Zabbix Server
 
 `docker-compose.yml` には `cloudflared` も含めています。`CF_TUNNEL_TOKEN` を設定すると、Grafana や Zabbix Web を Cloudflare Tunnel 経由で公開できます。
-また、`usb-storage` サービスは `LABEL=PI4DATA` の USB を検出してコンテナ内 `/mnt/usb` に自動 mountしますが、これは補助用途です。SD 消耗対策の本命は Docker 永続データ全体を USB 側で運用することです。
+また、`usb-storage` サービスは `LABEL=PI4DATA` の USB を検出してコンテナ内 `/mnt/usb` に自動 mountしますが、これは補助用途です。SD 消耗対策の本命は Docker 永続データ全体を USB 側で運用することです。`backup-rotate` は MariaDB の gzip バックアップを USB に定期保存し、古いものから削除して最新を残します。
 
 ## Balena Cloud への手動デプロイ
 前提:
@@ -33,6 +35,7 @@
 1. `cp .env.template .env` で雛形を作成し、パスワード類を変更します。
 2. balenaCloud の fleet または device の環境変数にも、少なくとも `DB_PASSWORD`、`DB_ROOT_PASSWORD`、`GRAFANA_ADMIN_PASSWORD` を登録します。Cloudflare Tunnel を使う場合は `CF_TUNNEL_TOKEN` も登録します。
    USB 補助サービスを使う場合は `USB_LABEL=PI4DATA` を確認します。
+   バックアップ運用を使う場合は `BACKUP_INTERVAL_SEC`、`BACKUP_RETENTION_COUNT`、`BACKUP_MAX_USAGE_PERCENT` も必要に応じて調整します。
 3. `balena login` または `balena login --token <API_TOKEN>` でログインします。
 4. `balena push Pi-Smarthome --source .` を実行してデプロイします。
 
@@ -64,6 +67,7 @@ GitHub Secrets:
 - 永続化は Docker volume を利用しています。SD 消耗を避けるため、MariaDB と Grafana の実データは USB ストレージ側へ逃がす前提で運用してください。
 - USB ストレージ運用の前提と注意点は [`docs/usb-storage.md`](/Users/serken/Desktop/4b/docs/usb-storage.md) を参照してください。
 - 実機確認の流れは [`docs/balena-usb-setup.md`](/Users/serken/Desktop/4b/docs/balena-usb-setup.md) にまとめています。
+- SD 消耗対策の考え方は [`docs/docker-data-on-usb.md`](/Users/serken/Desktop/4b/docs/docker-data-on-usb.md) にまとめています。
 - 構成変更時は `AGENTS.md` とこの `README.md` を必ず更新してください。
 
 ## Raspberry Pi 3 側との接続
@@ -105,6 +109,29 @@ GitHub Secrets:
 - MariaDB や Grafana の live data を SD に書かせない
 - そのために Host 側の Docker 永続データ設計を USB 前提にする
 - この部分はアプリ Compose ではなく balenaOS 実機運用として扱う
+
+## 容量管理
+USB が満杯になったときに「古いものから消して新しいものを残す」挙動は、ファイルシステムではなくアプリ側で実装する必要があります。このリポジトリでは次の方針を採ります。
+
+- live DB の肥大化は Zabbix housekeeping で抑える
+- USB 上の MariaDB バックアップは `backup-rotate` サービスで世代管理する
+- Grafana のコンテナログは `max-size=10m`、`max-file=3` で増えすぎを抑える
+
+`backup-rotate` の挙動:
+- 一定間隔で `mysqldump` を gzip 圧縮して USB に保存する
+- `BACKUP_RETENTION_COUNT` を超えた古いバックアップを削除する
+- USB 使用率が `BACKUP_MAX_USAGE_PERCENT` 以上なら、古いバックアップをさらに削除する
+
+推奨初期値:
+- `BACKUP_INTERVAL_SEC=21600` : 6時間ごと
+- `BACKUP_RETENTION_COUNT=14`
+- `BACKUP_MAX_USAGE_PERCENT=85`
+
+Zabbix housekeeping の推奨例:
+- history: 7日
+- trends: 365日
+
+この設定は Zabbix Web の `Administration > Housekeeping` から調整してください。live DB を無理にスクリプトで削るより安全です。
 
 ## Cloudflare Tunnel
 Cloudflare の公式手順では、リモート管理トンネルは token だけで実行できます。Docker 実行例も `cloudflare/cloudflared:latest tunnel --no-autoupdate run --token <TUNNEL_TOKEN>` です。このリポジトリでは同じ方式を `cloudflared` サービスに組み込んでいます。

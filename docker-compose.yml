@@ -22,6 +22,24 @@ services:
       USB_MOUNT_POINT: /mnt/usb
       USB_CHECK_INTERVAL: "${USB_CHECK_INTERVAL:-30}"
 
+  backup-rotate:
+    build: ./backup-rotate
+    restart: unless-stopped
+    privileged: true
+    depends_on:
+      - mariadb
+    environment:
+      USB_LABEL: "${USB_LABEL:-PI4DATA}"
+      USB_MOUNT_POINT: /mnt/usb
+      BACKUP_DIR: /mnt/usb/backups/mariadb
+      BACKUP_INTERVAL_SEC: "${BACKUP_INTERVAL_SEC:-21600}"
+      BACKUP_RETENTION_COUNT: "${BACKUP_RETENTION_COUNT:-14}"
+      BACKUP_MAX_USAGE_PERCENT: "${BACKUP_MAX_USAGE_PERCENT:-85}"
+      DB_HOST: mariadb
+      DB_NAME: "${DB_NAME:-zabbix}"
+      DB_USER: "${DB_USER:-zabbix}"
+      DB_PASSWORD: "${DB_PASSWORD}"
+
   mariadb:
     image: mariadb:11.4
     restart: unless-stopped
@@ -100,6 +118,11 @@ services:
       - "3000:3000"
     volumes:
       - grafana-data:/var/lib/grafana
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   cloudflared:
     image: cloudflare/cloudflared:latest
