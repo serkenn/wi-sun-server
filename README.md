@@ -24,7 +24,7 @@
 
 `docker-compose.yml` には `cloudflared` も含めています。`CF_TUNNEL_TOKEN` を設定すると、Grafana や Zabbix Web を Cloudflare Tunnel 経由で公開できます。
 また、`usb-storage` サービスは `LABEL=PI4DATA` の USB を検出してコンテナ内 `/mnt/usb` に自動 mountしますが、これは補助用途です。SD 消耗対策の本命は Docker 永続データ全体を USB 側で運用することです。`backup-rotate` は MariaDB の gzip バックアップを USB に定期保存し、古いものから削除して最新を残します。
-Grafana には `alexanderzobnin-zabbix-app@5.2.1` を起動時に自動導入し、Zabbix データソースを追加できる状態にしています。Grafana 11.1.0 と組み合わせるため、Grafana 11.6.0 以上を要求する 6.x 系は使いません。
+Grafana は `12.4.1` を使います。Grafana 12.4 以降は `grafana/grafana-oss` ではなく `grafana/grafana` を使う前提に切り替えています。Zabbix plugin は現時点では `alexanderzobnin-zabbix-app@5.2.1` に固定し、永続 volume に古い plugin が残っている場合でも、起動時に互換外 version を削除してから `grafana cli` で再導入します。
 
 ## Balena Cloud への手動デプロイ
 前提:
@@ -72,7 +72,7 @@ GitHub Secrets:
 - 構成変更時は `AGENTS.md` とこの `README.md` を必ず更新してください。
 
 ## Grafana から Zabbix を使う
-この構成では Grafana に Zabbix プラグインを自動導入します。Grafana 11.1.0 は、Grafana Labs の公開情報で Zabbix plugin 5.x の必要条件である Grafana 10.4.8 以上を満たしています。一方で Zabbix plugin 6.x は Grafana 11.6.0 以上を要求するため、このリポジトリでは 5.2.1 に固定します。
+この構成では Grafana に Zabbix プラグインを自動導入します。Grafana 本体は `12.4.1` ですが、plugin は既存ダッシュボードと設定画面の安定性を優先して `5.2.1` に固定しています。`grafana-data` volume に別 version が残っている場合でも、Grafana 起動前に互換外 version を削除してから `grafana cli plugins install alexanderzobnin-zabbix-app 5.2.1` を実行します。
 
 設定手順:
 1. Grafana に `admin` でログインします。
